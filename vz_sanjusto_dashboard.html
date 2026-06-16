@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VZ Laboratorios — San Justo · Comunicación con el paciente</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal: #1D9E75;
+    --teal-light: #E1F5EE;
+    --teal-dark: #0F6E56;
+    --amber: #EF9F27;
+    --amber-dark: #BA7517;
+    --red: #E24B4A;
+    --red-dark: #A32D2D;
+    --blue-light: #E6F1FB;
+    --blue: #185FA5;
+    --gray-bg: #F7F7F5;
+    --gray-card: #EFEDE8;
+    --gray-border: rgba(0,0,0,0.10);
+    --text-primary: #1a1a18;
+    --text-secondary: #5a5a56;
+    --text-muted: #8a8a84;
+    --white: #ffffff;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--gray-bg);
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .page { max-width: 1280px; margin: 0 auto; padding: 2rem 2rem 3rem; }
+
+  /* HEADER */
+  .header { margin-bottom: 1.5rem; }
+  .sede-tag {
+    display: inline-block; font-size: 12px; font-weight: 600;
+    background: var(--blue-light); color: var(--blue);
+    padding: 3px 12px; border-radius: 20px; margin-bottom: 8px;
+    letter-spacing: 0.03em; text-transform: uppercase;
+  }
+  .header h1 { font-size: 28px; font-weight: 600; color: var(--text-primary); }
+  .header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .metric {
+    background: var(--white); border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border); padding: 1rem 1.25rem;
+  }
+  .metric-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-value { font-size: 32px; font-weight: 600; color: var(--text-primary); line-height: 1; }
+  .metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--gray-border); margin-bottom: 1.5rem; }
+  .tab {
+    font-size: 14px; font-weight: 500; padding: 10px 22px;
+    color: var(--text-secondary); cursor: pointer; border: none;
+    background: none; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: color 0.15s;
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--white); border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border); padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1.25rem;
+  }
+
+  /* SPIDER */
+  .spider-container { position: relative; width: 100%; }
+
+  /* LEGEND */
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-secondary); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* BARS */
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bar-label { font-size: 13px; color: var(--text-secondary); flex: 0 0 380px; line-height: 1.35; }
+  .bar-track { flex: 1; background: var(--gray-card); border-radius: 4px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-score { font-size: 14px; font-weight: 600; flex: 0 0 36px; text-align: right; }
+  .bar-high  { background: var(--teal); }
+  .bar-mid   { background: var(--amber); }
+  .bar-low   { background: var(--red); }
+  .score-high { color: var(--teal-dark); }
+  .score-mid  { color: var(--amber-dark); }
+  .score-low  { color: var(--red-dark); }
+
+  .nota { font-size: 12px; color: var(--text-muted); margin-top: 1rem; font-style: italic; }
+
+  /* VOCES */
+  .voces-block { margin-bottom: 1.25rem; }
+  .voces-block:last-child { margin-bottom: 0; }
+  .voces-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.65rem;
+  }
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 13px; border-radius: 20px; font-size: 13px; line-height: 1.4;
+  }
+  .tag-s { background: #E1F5EE; color: #085041; border: 1px solid #9FE1CB; }
+  .tag-o { background: #FAECE7; color: #4A1B0C; border: 1px solid #F0997B; }
+  .tag-p { background: #EEEDFE; color: #26215C; border: 1px solid #AFA9EC; }
+  .tag-n { font-size: 11px; font-weight: 600; opacity: 0.65; }
+
+  .divider { border: none; border-top: 1px solid var(--gray-border); margin: 1.25rem 0; }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 2rem; padding-top: 1rem;
+    border-top: 1px solid var(--gray-border);
+    font-size: 12px; color: var(--text-muted);
+    display: flex; justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <span class="sede-tag">Sede San Justo</span>
+    <h1>Comunicación con el paciente</h1>
+    <p>Auto-observación del equipo &nbsp;·&nbsp; 11 respuestas &nbsp;·&nbsp; Abril 2026 &nbsp;·&nbsp; VZ Laboratorios</p>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Promedio general</div>
+      <div class="metric-value" id="mG">—</div>
+      <div class="metric-sub">sobre 4 puntos</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Promedio recepción</div>
+      <div class="metric-value" id="mR">—</div>
+      <div class="metric-sub">sobre 4 puntos</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Promedio extracción</div>
+      <div class="metric-value" id="mE">—</div>
+      <div class="metric-sub">sobre 4 puntos</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Equipo</div>
+      <div class="metric-value">11</div>
+      <div class="metric-sub">4 extrac &nbsp;·&nbsp; 5 recep &nbsp;·&nbsp; 2 mtto</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('general')">Comportamientos generales</button>
+    <button class="tab" onclick="showTab('recepcion')">Recepción</button>
+    <button class="tab" onclick="showTab('extraccion')">Extracción</button>
+    <button class="tab" onclick="showTab('voces')">Voces del equipo</button>
+  </div>
+
+  <!-- GENERAL -->
+  <div class="panel active" id="tab-general">
+    <div class="card">
+      <div class="card-title">Diagrama de araña — comportamientos generales</div>
+      <div class="spider-container" style="height:560px;">
+        <canvas id="spG" role="img" aria-label="Radar comportamientos generales San Justo"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Detalle por comportamiento</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>Fortaleza (≥ 3.5)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#EF9F27"></span>En desarrollo (3.0 – 3.4)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#E24B4A"></span>Oportunidad de mejora (&lt; 3.0)</div>
+      </div>
+      <div id="bG"></div>
+      <p class="nota">Escala 1 a 4. Las respuestas "No aplica a mi función" no computan en el promedio.</p>
+    </div>
+  </div>
+
+  <!-- RECEPCIÓN -->
+  <div class="panel" id="tab-recepcion">
+    <div class="card">
+      <div class="card-title">Diagrama de araña — recepción</div>
+      <div class="spider-container" style="height:500px;">
+        <canvas id="spR" role="img" aria-label="Radar recepción San Justo"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Detalle por comportamiento</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>Fortaleza (≥ 3.5)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#EF9F27"></span>En desarrollo (3.0 – 3.4)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#E24B4A"></span>Oportunidad de mejora (&lt; 3.0)</div>
+      </div>
+      <div id="bR"></div>
+      <p class="nota">Solo recepcionistas — 5 respuestas.</p>
+    </div>
+  </div>
+
+  <!-- EXTRACCIÓN -->
+  <div class="panel" id="tab-extraccion">
+    <div class="card">
+      <div class="card-title">Diagrama de araña — extracción</div>
+      <div class="spider-container" style="height:560px;">
+        <canvas id="spE" role="img" aria-label="Radar extracción San Justo"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Detalle por comportamiento</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#1D9E75"></span>Fortaleza (≥ 3.5)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#EF9F27"></span>En desarrollo (3.0 – 3.4)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#E24B4A"></span>Oportunidad de mejora (&lt; 3.0)</div>
+      </div>
+      <div id="bE"></div>
+      <p class="nota">Solo extraccionistas — 4 respuestas.</p>
+    </div>
+  </div>
+
+  <!-- VOCES -->
+  <div class="panel" id="tab-voces">
+    <div class="card">
+      <div class="voces-block">
+        <div class="voces-label">Fortalezas reconocidas por el equipo</div>
+        <div class="tag-cloud" id="tsF"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="voces-block">
+        <div class="voces-label">Situaciones donde la comunicación podría mejorar</div>
+        <div class="tag-cloud" id="tsO"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="voces-block">
+        <div class="voces-label">Tipos de paciente que generan mayor dificultad</div>
+        <div class="tag-cloud" id="tsP"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>VZ Laboratorios &nbsp;·&nbsp; Sede San Justo &nbsp;·&nbsp; Encuesta de auto-observación · Abril 2026</span>
+    <span>Escala 1–4 &nbsp;·&nbsp; 11 respuestas</span>
+  </div>
+
+</div>
+
+<script>
+const rawG = [
+  [3,2,3,3,2,3,3,3,3,3,3,3,2],
+  [4,4,4,4,2,4,4,4,3,4,4,4,4],
+  [4,2,3,4,1,4,3,4,4,4,4,4,4],
+  [3,2,2,3,3,3,3,3,3,2,2,3,2],
+  [3,2,3,3,2,3,3,2,2,3,3,3,3],
+  [4,4,4,4,3,4,4,4,3,4,4,4,4],
+  [3,1,1,2,1,1,3,3,2,2,2,3,3],
+  [3,1,2,3,1,2,2,3,2,3,1,3,3],
+  [3,2,2,3,2,3,3,2,2,3,3,3,3],
+  [3,2,2,3,3,3,3,3,3,2,2,3,2],
+  [3,3,null,3,null,null,null,null,2,null,3,4,4],
+];
+const rawR = [
+  [3,3,3,2,3,3],
+  [4,4,4,4,4,4],
+  [3,3,3,3,3,3],
+  [3,2,2,3,3,3],
+  [3,3,3,3,3,3],
+];
+const rawE = [
+  [null,null,null,null,null,1,null,null,null,2],
+  [4,3,4,4,4,4,4,4,4,2],
+  [4,4,4,4,4,3,4,4,4,2],
+  [3,3,3,3,3,3,3,3,3,2],
+];
+
+const labGShort = [
+  'Saludo inicio/fin','Contacto visual','Sonrío','Por favor/gracias',
+  'Nombre paciente','Lenguaje accesible','Adapto al paciente',
+  'Discreción','Evito coment. pers.','Respondo preguntas',
+  'Gestión quejas','Uniforme','Presentación personal'
+];
+const labGFull = [
+  'Saludo al paciente al iniciar y al terminar la interacción',
+  'Miro a los ojos al paciente',
+  'Sonrío durante la conversación',
+  'Uso el "por favor" y el "gracias" de manera natural',
+  'Uso el nombre del paciente en la interacción',
+  'Uso un lenguaje accesible, evitando tecnicismos innecesarios',
+  'Ajusto el ritmo y el nivel de detalle para cada paciente',
+  'Cuido que los comentarios sobre pacientes o situaciones sensibles no sean audibles para otras personas',
+  'Evito comentarios personales delante de los pacientes',
+  'Si el paciente tiene dudas, respondo con disposición y sin apuro',
+  'Si un paciente se queja, escucho sin interrumpir y me concentro en buscar una solución',
+  'Uso el uniforme del laboratorio',
+  'Mi presentación personal es limpia y prolija',
+];
+const labRShort = ['Error Contact Center','Aviso pausa interna','Obstáculo administrativo','Entrega documentación','Orienta próx. pasos','Contacto telefónico'];
+const labRFull = [
+  'Si detecto un error del Contact Center, me enfoco en solucionar SIN exponer la situación ante el paciente',
+  'Si necesito resolver algo internamente, lo aviso en forma breve y tranquila ("Permítame verificar algo, enseguida estoy con usted")',
+  'Si existe algún obstáculo administrativo, transmito con amabilidad que la atención se realizará de todas maneras',
+  'Cuando entrego la documentación, indico al paciente qué deberá hacer con ella al momento de la extracción',
+  'Oriento al paciente sobre los próximos pasos: por dónde será llamado y dónde puede esperar',
+  'Si necesito contactar al paciente por recitación o pendiente administrativo, lo hablo telefónicamente de manera clara y amable',
+];
+const labEShort = ['Sale del box','Acompaña al box','Indica dónde dejar cosas','Solicita nombre/DNI','Maneja error sin exponer','Pregunta brazo habitual','Abre material','Explica si falla','Indicaciones post','Invita al café'];
+const labEFull = [
+  'Salgo del box para llamar al paciente',
+  'Acompaño al paciente hasta el box. El paciente pasa primero',
+  'Indico al paciente dónde dejar sus cosas y lo invito a tomar asiento',
+  'Solicito al paciente su nombre y DNI en forma amable y cuidadosa',
+  'Si detecto un error administrativo, me enfoco en solucionar SIN exponer la situación ante el paciente',
+  'Pregunto en qué brazo le realizan la extracción habitualmente y lo tengo en cuenta',
+  'Abro el material delante del paciente',
+  'Si la primera extracción no es exitosa, explico los próximos pasos transmitiendo tranquilidad',
+  'Doy indicaciones post-extracción: cómo y cuánto tiempo sostener la compresión y qué hacer si pasa algo',
+  'Invito al paciente al café de desayuno',
+];
+
+function compAvgs(raw, n) {
+  return Array.from({length:n}, (_,c) => {
+    const vs = raw.map(r => r[c]).filter(x => x !== null && x !== undefined);
+    return vs.length ? +(vs.reduce((a,b)=>a+b,0)/vs.length).toFixed(2) : null;
+  });
+}
+
+const avG = compAvgs(rawG, 13);
+const avR = compAvgs(rawR, 6);
+const avE = compAvgs(rawE, 10);
+
+function meanOf(arr) {
+  const v = arr.filter(x => x !== null);
+  return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(2) : '-';
+}
+document.getElementById('mG').textContent = meanOf(avG);
+document.getElementById('mR').textContent = meanOf(avR);
+document.getElementById('mE').textContent = meanOf(avE);
+
+function gc(v) {
+  if (v >= 3.5) return {b:'bar-high', s:'score-high'};
+  if (v >= 3.0) return {b:'bar-mid',  s:'score-mid'};
+  return {b:'bar-low', s:'score-low'};
+}
+
+function renderBars(id, fullLabels, avgs) {
+  document.getElementById(id).innerHTML = fullLabels.map((lbl,i) => {
+    const v = avgs[i]; if (v === null) return '';
+    const c = gc(v);
+    return `<div class="bar-row">
+      <div class="bar-label">${lbl}</div>
+      <div class="bar-track"><div class="bar-fill ${c.b}" style="width:${(v/4)*100}%"></div></div>
+      <div class="bar-score ${c.s}">${v.toFixed(1)}</div>
+    </div>`;
+  }).join('');
+}
+renderBars('bG', labGFull, avG);
+renderBars('bR', labRFull, avR);
+renderBars('bE', labEFull, avE);
+
+const spidersInit = {};
+
+function makeSpider(id, labels, data) {
+  if (spidersInit[id]) return;
+  spidersInit[id] = true;
+  new Chart(document.getElementById(id), {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Promedio equipo',
+        data: data.map(x => x || 0),
+        backgroundColor: 'rgba(29,158,117,0.15)',
+        borderColor: '#1D9E75',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#1D9E75',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 28, bottom: 28, left: 28, right: 28 } },
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 4,
+          ticks: {
+            stepSize: 1, color: '#888', font: { size: 13 },
+            backdropColor: 'transparent'
+          },
+          grid: { color: 'rgba(0,0,0,0.09)' },
+          angleLines: { color: 'rgba(0,0,0,0.09)' },
+          pointLabels: {
+            font: { size: 13 },
+            color: '#444',
+            padding: 14,
+            callback: lbl => lbl.split('/')
+          }
+        }
+      }
+    }
+  });
+}
+
+makeSpider('spG', labGShort, avG);
+
+function showTab(n) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-'+n).classList.add('active');
+  if (n === 'recepcion') makeSpider('spR', labRShort, avR);
+  if (n === 'extraccion') makeSpider('spE', labEShort, avE);
+}
+
+function renderTags(id, items, cls) {
+  document.getElementById(id).innerHTML = items.map(it =>
+    `<span class="tag ${cls}">${it.t} <span class="tag-n">(${it.n})</span></span>`
+  ).join('');
+}
+renderTags('tsF', [
+  {t:'Empatía', n:5},
+  {t:'Amabilidad y buena atención', n:3},
+  {t:'Paciencia', n:3},
+  {t:'Comunicación clara', n:2},
+  {t:'Explicar hasta asegurarse de que quedó claro', n:1},
+], 'tag-s');
+renderTags('tsO', [
+  {t:'Alta demanda / sala llena → atención apresurada', n:3},
+  {t:'Paciente enojado o ya molesto de antemano', n:3},
+  {t:'Contacto visual al inicio de la atención', n:2},
+  {t:'Usar el nombre del paciente', n:2},
+  {t:'Documentación incorrecta → conversación tensa', n:1},
+  {t:'Comunicación después del mediodía (atención fragmentada)', n:1},
+], 'tag-o');
+renderTags('tsP', [
+  {t:'Adultos mayores (hipoacusia, solos, PAMI)', n:4},
+  {t:'Pacientes ya enojados por situaciones previas', n:3},
+  {t:'Pacientes que no escuchan o no dejan explicar', n:2},
+], 'tag-p');
+</script>
+</body>
+</html>
